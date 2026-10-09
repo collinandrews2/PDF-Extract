@@ -21,10 +21,10 @@ def extract_data(file_path):
     pd.DataFrame: The extracted data as a DataFrame.
     """
 
-    "keep track of the data extraction process and log any issues that arise"
+    #keep track of the data extraction process and log any issues that arise
     logging.info(f"Starting data extraction from {file_path}")
 
-    "looks for the specified file and attempts to read it into a DataFrame, logging success or failure"
+    #looks for the specified file and attempts to read it into a DataFrame, logging success or failure"
     try:
         data = pd.read_csv(file_path)
         logging.info(f"Data successfully extracted from {file_path}")

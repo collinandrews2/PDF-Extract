@@ -12,16 +12,16 @@ logger = logging.getLogger(__name__)
 
 
 class TaxDocumentIngester(ABC):
-    """Abstract base class for tax document ingestion sources."""
+    #Abstract base class for tax document ingestion sources.
     
     @abstractmethod
     def ingest(self) -> Dict[str, Any]:
-        """Ingest tax documents from the source."""
+        #Ingest tax documents from the source.
         pass
 
 
 class S3Ingester(TaxDocumentIngester):
-    """Handles document ingestion from S3 (API, email scraping, SFTP uploads)."""
+    #Handles document ingestion from S3 (API, email scraping, SFTP uploads).
     
     def __init__(self, bucket_name: str, region: str = 'us-east-1'):
         self.s3_client = boto3.client('s3', region_name=region)
@@ -29,7 +29,7 @@ class S3Ingester(TaxDocumentIngester):
         self.landing_prefix = 'landing-zone/'
     
     def ingest(self) -> Dict[str, Any]:
-        """List and verify documents in landing zone."""
+        #List and verify documents in landing zone.
         try:
             response = self.s3_client.list_objects_v2(
                 Bucket=self.bucket_name,
@@ -48,7 +48,7 @@ class S3Ingester(TaxDocumentIngester):
             return {'status': 'error', 'message': str(e)}
     
     def upload_document(self, file_path: str, document_name: str) -> bool:
-        """Upload tax document to landing zone."""
+        #Upload tax document to landing zone.
         try:
             s3_key = f"{self.landing_prefix}{document_name}"
             self.s3_client.upload_file(file_path, self.bucket_name, s3_key)
