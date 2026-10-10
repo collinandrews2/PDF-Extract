@@ -10,14 +10,14 @@ from extract import extract_pdf_tables, extract_data
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def setup_environment(base_dir: str = 'data'):
-    """Ensures landing zones exist before execution."""
+    #Ensures landing zones exist before execution.
     paths = [f"{base_dir}/landing", f"{base_dir}/processed", f"{base_dir}/failed"]
     for path in paths:
         Path(path).mkdir(parents=True, exist_ok=True)
     return paths[0]
 
 def process_document(file_path: Path):
-    """Routes the document based on its file type and digital layer."""
+    #Routes the document based on its file type and digital layer.
     if file_path.suffix.lower() == '.csv':
         df = extract_data(file_path)
         return {"file": file_path.name, "type": "csv", "tables": [df]}
