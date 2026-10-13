@@ -1,0 +1,15 @@
+# Core PDF processing
+PyMuPDF>=1.24.0 or most updated version
+pypdf>=4.0.0 or most updated version
+pdfplumber>=0.11.0 or most updated version
+Pillow>=10.4.0 or most updated version
+
+# OCR and image conversion
+pytesseract>=0.3.10 or most updated version
+pdf2image>=1.17.0 or most updated version
+opencv-python-headless>=4.10.0 or most updated version
+
+# Utilities
+python-dotenv>=1.0.1 or most updated version
+requests>=2.32.0 or most updated version
+tqdm>=4.66.0 or most updated version
