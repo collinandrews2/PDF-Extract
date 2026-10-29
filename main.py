@@ -2,6 +2,7 @@ import os
 import logging
 from pathlib import Path
 import pandas as pd
+import shutil
 
 from ingestion import LocalDirectoryIngester
 from layer_check import classify_pdf
@@ -77,10 +78,11 @@ def main():
             data = process_document(file)
             if data and data["data"]:
                 results.append(data)
+                file.unlink()  # Remove from landing once processed
             else:
-                # Move failed or empty files to the failed directory
+                # Move failed or empty files to the failed directory (overwriting if needed)
                 failed_path = Path(dirs["failed"]) / file.name
-                file.rename(failed_path)
+                shutil.move(str(file), str(failed_path))
                 logging.warning(f"Moved {file.name} to failed directory.")
             
     # 3. Export Output

@@ -1,10 +1,9 @@
 from pathlib import Path
 
 try:
-    from PyPDF2 import PdfReader
+    from pypdf import PdfReader
 except ImportError as exc:
-    raise ImportError("PyPDF2 is required to inspect PDF text layers") from exc
-
+    raise ImportError("pypdf is required to inspect PDF text layers") from exc
 
 def has_text_layer(pdf_path: str) -> bool:
     """Return True when a PDF contains an extractable text layer."""
