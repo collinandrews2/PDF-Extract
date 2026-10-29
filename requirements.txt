@@ -3,6 +3,7 @@ PyMuPDF>=1.24.0
 pypdf>=4.0.0
 pdfplumber>=0.11.0
 Pillow>=10.4.0
+Pandas>=2.0.0
 
 # OCR and image conversion
 pytesseract>=0.3.10
