@@ -1,0 +1,27 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local ETL staging zones & client data (keep out of Git!)
+data/
+
+# Logs
+*.log
+pipeline.log
+
+# Environment variables & secrets
+.env
+
+# VS Code local workspace settings (optional, remove if you want to share settings)
+.vscode/
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
