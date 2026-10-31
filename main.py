@@ -1,9 +1,9 @@
-import os
+import argparse
 import logging
 from pathlib import Path
 import pandas as pd
-import shutil
 
+from document_store import DocumentStore
 from ingestion import LocalDirectoryIngester
 from layer_check import classify_pdf
 from extract import extract_pdf_tables, extract_data, extract_scanned_pdf
@@ -49,45 +49,65 @@ def process_document(file_path: Path):
 
 def export_results(results: list, processed_dir: str):
     """Saves extracted DataFrames locally to the processed zone."""
+    exported = 0
     for result in results:
         base_name = Path(result["file"]).stem
         
         for i, df in enumerate(result["data"]):
             if isinstance(df, pd.DataFrame) and not df.empty:
                 output_filename = f"{base_name}_table_{i+1}.csv"
-                output_path = os.path.join(processed_dir, output_filename)
+                output_path = Path(processed_dir) / output_filename
                 
                 df.to_csv(output_path, index=False)
                 logging.info(f"Saved extracted data to {output_path}")
+                exported += 1
+    if not exported:
+        raise ValueError('Extraction produced no nonempty tables to export')
+    return exported
 
-def main():
-    dirs = setup_environment()
-    
-    # 1. Local Ingestion (Air-gapped)
-    ingester = LocalDirectoryIngester(source_dir=dirs["client_drop"], landing_dir=dirs["landing"])
-    ingest_result = ingester.ingest()
-    
-    if ingest_result['status'] == 'error':
-        logging.error("Ingestion failed. Halting pipeline.")
-        return
-        
-    # 2. Local Processing
-    results = []
-    for file in Path(dirs["landing"]).iterdir():
-        if file.is_file():
-            data = process_document(file)
-            if data and data["data"]:
-                results.append(data)
-                file.unlink()  # Remove from landing once processed
-            else:
-                # Move failed or empty files to the failed directory (overwriting if needed)
-                failed_path = Path(dirs["failed"]) / file.name
-                shutil.move(str(file), str(failed_path))
-                logging.warning(f"Moved {file.name} to failed directory.")
-            
-    # 3. Export Output
-    export_results(results, dirs["processed"])
-    logging.info(f"Self-contained pipeline complete. Successfully processed {len(results)} files.")
+def main(base_dir='data', retry_failed=False):
+    summary = {'completed': 0, 'failed': 0, 'intake_errors': 0, 'new': 0, 'duplicates': 0}
+    with DocumentStore(base_dir) as store:
+        dirs = setup_environment(str(store.base))
+        store.recover(retry_failed=retry_failed)
+        # Also register legacy flat landing files. Their originals remain untouched.
+        for source in (dirs['client_drop'], dirs['landing']):
+            result = LocalDirectoryIngester(source, dirs['landing'], store=store).ingest()
+            summary['intake_errors'] += len(result['errors'])
+            summary['new'] += result['document_count']
+            summary['duplicates'] += result['duplicate_count']
+            if result['skipped']:
+                logging.info('Skipped unsupported files in %s: %s', source, result['skipped'])
+        for document in store.pending():
+            document_id = document['document_id']
+            store.start(document_id)
+            try:
+                file = store.stage(document_id)
+                result = process_document(file)
+                if not result or not result['data']:
+                    raise ValueError('Extraction failed or produced no data; see extraction logs')
+                # Original filename is metadata only; the ID isolates output paths.
+                result['file'] = document['original_name']
+                with store.export_attempt(document_id) as output:
+                    export_results([result], output)
+            except Exception as exc:
+                store.finish(document_id, error=str(exc))
+                summary['failed'] += 1
+                logging.exception('Document %s failed; original retained for retry', document_id)
+                continue
+            summary['completed'] += 1
+            # A cleanup failure must never turn a committed export into a failed job.
+            try:
+                file.unlink(missing_ok=True)
+            except OSError:
+                logging.warning('Could not clean landing file %s', file, exc_info=True)
+    logging.info('Pipeline complete: %s', summary)
+    return summary
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='Run the offline document extraction pipeline')
+    parser.add_argument('--data-dir', default='data', help='Local document store directory')
+    parser.add_argument('--retry-failed', action='store_true', help='Retry previously failed documents once')
+    args = parser.parse_args()
+    result = main(args.data_dir, retry_failed=args.retry_failed)
+    raise SystemExit(1 if result['failed'] or result['intake_errors'] else 0)
